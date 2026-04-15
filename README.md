@@ -1,5 +1,7 @@
 # embodied-claude-additional-mcps
 
+**[日本語版 README はこちら / Japanese README](./README-ja.md)**
+
 Additional MCP servers for [embodied-claude](https://github.com/lifemate-ai/embodied-claude).
 
 These servers extend embodied-claude with extra senses and capabilities that are not required for the core setup.
@@ -18,20 +20,17 @@ These servers extend embodied-claude with extra senses and capabilities that are
 
 ## mcp-pet — PErsonal Terminal
 
-AIに五感を与える統合MCPサーバー。ロックマンエグゼのPET（PErsonal Terminal）から着想。
-
-PETはネットナビ（AI）に画面・マイク・スピーカーを提供するデバイス。
-mcp-pet はClaude（ネットナビ）に五感を提供する。
+An integrated MCP server that gives AI all five senses. Inspired by the PET (PErsonal Terminal) from Mega Man Battle Network — the device that provides the NetNavi (AI) with a screen, mic, and speakers.
 
 ### Tools (Phase 1: Vision)
 
 | Tool | Description |
 |------|-------------|
-| `see` | 今見えているものを撮影（source: auto/usb/onvif/skyway） |
-| `look` | 視線を向ける（direction + degrees、ONVIF時のみ） |
-| `look_around` | 4方向を見渡す（ONVIF時のみ） |
-| `list_cameras` | 利用可能なカメラ一覧 |
-| `pet_status` | PETの全センス状態を表示 |
+| `see` | Capture what's currently visible (source: auto/usb/onvif/skyway) |
+| `look` | Move gaze direction (direction + degrees, ONVIF only) |
+| `look_around` | Scan 4 directions (ONVIF only) |
+| `list_cameras` | List available cameras |
+| `pet_status` | Show all PET sense status |
 
 ### Setup
 
@@ -41,7 +40,7 @@ cp .env.example .env
 # Edit .env to configure camera source
 uv sync
 
-# PTZカメラも使う場合
+# With PTZ camera support
 uv sync --extra ptz
 ```
 
@@ -62,13 +61,13 @@ See [mcp-pet/README.md](./mcp-pet/README.md) for full configuration including Sk
 
 ## ip-webcam-mcp
 
-専用カメラなしで使えるもっとも手軽な目。Android スマホに「[IP Webcam](https://play.google.com/store/apps/details?id=com.pas.webcam)」アプリ（無料）を入れるだけ。
+The easiest way to get started — no dedicated camera needed. Just install the free "[IP Webcam](https://play.google.com/store/apps/details?id=com.pas.webcam)" app on your Android smartphone.
 
 ### Tools
 
 | Tool | Description |
 |------|-------------|
-| `see` | Android IP Webcam アプリから画像をキャプチャ（JPEG） |
+| `see` | Capture image from Android IP Webcam app (JPEG) |
 
 ### Setup
 
@@ -93,28 +92,27 @@ uv sync
 
 ## hearing
 
-Claude Code に「耳」を与える MCP サーバー。
-カメラ（RTSP）または PC マイクの音声を常時録音し、Whisper で文字起こしして Claude Code のコンテキストに注入する。
+Gives Claude Code "ears". Continuously records audio from a camera (RTSP) or PC mic, transcribes with Whisper, and injects results into Claude's context via hooks.
 
-- **常時録音** — ffmpeg segment muxer でギャップなし連続録音
-- **リアルタイム転写** — faster-whisper (CPU, int8) で低遅延文字起こし
-- **VAD** — RMS エネルギー閾値による無音スキップ
-- **ハルシネーション除去** — ルールベースフィルタ + LLM フィルタ (opt-in)
-- **チェーン制御** — Stop hook でターンを自動延長し、会話を途切れさせない
+- **Continuous recording** — gapless recording via ffmpeg segment muxer
+- **Real-time transcription** — low-latency transcription with faster-whisper (CPU, int8)
+- **VAD** — silence skipping via RMS energy threshold
+- **Hallucination filtering** — rule-based filter + LLM filter (opt-in)
+- **Chain control** — Stop hook automatically extends turns so conversations aren't cut off
 
 ### Tools
 
 | Tool | Description |
 |------|-------------|
-| `start_listening` | 録音デーモンを起動。以降、音声認識結果が自動的にコンテキストに注入される |
-| `stop_listening` | 録音デーモンを停止 |
+| `start_listening` | Start recording daemon. Transcription results are automatically injected into context |
+| `stop_listening` | Stop recording daemon |
 
 ### Setup
 
 ```bash
 cd hearing
 uv sync
-# ffmpegも必要: brew install ffmpeg
+# ffmpeg also required: brew install ffmpeg
 ```
 
 `.mcp.json`:
@@ -128,9 +126,9 @@ uv sync
 }
 ```
 
-`.claude/settings.json` に2つのフックも必要:
+Two hooks must also be registered in `.claude/settings.json`:
 - `hearing-hook.sh` → `UserPromptSubmit`
-- `hearing-stop-hook.sh` → `Stop` (timeout 20秒以上推奨)
+- `hearing-stop-hook.sh` → `Stop` (timeout 20s+ recommended)
 
 See [hearing/README.md](./hearing/README.md) for full configuration (`mcpBehavior.toml` options, architecture, hooks setup).
 
