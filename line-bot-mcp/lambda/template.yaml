@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: LINE webhook receiver — API Gateway (HTTP API) + Lambda + DynamoDB
+
+Parameters:
+  LineChannelSecret:
+    Type: String
+    NoEcho: true
+    Description: LINE channel secret (for X-Line-Signature verification)
+  LineOwnerUserId:
+    Type: String
+    Default: ""
+    Description: the owner's LINE userId (from webhook source.userId; set after first message)
+  InboxTtlDays:
+    Type: Number
+    Default: 14
+    Description: Days before a stored message auto-expires via DynamoDB TTL
+
+Globals:
+  Function:
+    Timeout: 10
+    Runtime: python3.12
+    MemorySize: 128
+
+Resources:
+  InboxTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: line-inbox
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: message_id
+          AttributeType: S
+        - AttributeName: processed
+          AttributeType: N
+        - AttributeName: line_ts
+          AttributeType: N
+      KeySchema:
+        - AttributeName: message_id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: unprocessed-index
+          KeySchema:
+            - AttributeName: processed
+              KeyType: HASH
+            - AttributeName: line_ts
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  WebhookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: line-webhook
+      CodeUri: .
+      Handler: handler.handler
+      Environment:
+        Variables:
+          LINE_CHANNEL_SECRET: !Ref LineChannelSecret
+          LINE_OWNER_USER_ID: !Ref LineOwnerUserId
+          INBOX_TABLE: !Ref InboxTable
+          INBOX_TTL_DAYS: !Ref InboxTtlDays
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: dynamodb:PutItem
+              Resource: !GetAtt InboxTable.Arn
+      Events:
+        Webhook:
+          Type: HttpApi
+          Properties:
+            Path: /webhook
+            Method: POST
+
+Outputs:
+  WebhookUrl:
+    Description: LINE webhook URL — register this in LINE Developers Console
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/webhook"
+  InboxTableName:
+    Description: DynamoDB inbox table name (set as LINE_INBOX_TABLE on the the host machine)
+    Value: !Ref InboxTable

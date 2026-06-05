@@ -1,0 +1,2 @@
+# boto3 / botocore are provided by the Lambda python3.12 runtime — no deps to install.
+# Add a pinned boto3 here only if you need a newer version than the runtime ships.
