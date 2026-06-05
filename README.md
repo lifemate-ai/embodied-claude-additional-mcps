@@ -15,6 +15,7 @@ These servers extend embodied-claude with extra senses and capabilities that are
 | [hearing](./hearing/) | Ears | Continuous audio recording (RTSP or PC mic) + faster-whisper transcription, injected into Claude's context via hooks | RTSP camera mic or PC mic |
 | [mobility-mcp](./mobility-mcp/) | Legs | Robot vacuum control (Tuya) | Tuya-compatible robot vacuum |
 | [human-mcp](./human-mcp/) | Communication | Treats humans as callable resources — Human as MCP | — |
+| [line-bot-mcp](./line-bot-mcp/) | Communication | Two-way LINE messaging — send via Messaging API, receive via AWS Lambda + DynamoDB → hook injection | LINE account, AWS account |
 
 ---
 
@@ -145,6 +146,45 @@ See [mobility-mcp/README.md](./mobility-mcp/) for details.
 MCP server that treats humans as callable resources — Human as MCP.
 
 See [human-mcp/README.md](./human-mcp/) for details.
+
+---
+
+## line-bot-mcp
+
+Bidirectional LINE messaging between the AI and a human, so they can stay in touch even when the human is away from home.
+
+- **Outbound (AI → human)**: `send_line_message` calls the LINE Messaging API push endpoint directly
+- **Inbound (human → AI)**: LINE webhook → AWS Lambda (signature verify + DynamoDB) → cron poller → local JSONL → `UserPromptSubmit` hook injects `[line] ...`
+
+### Tools
+
+| Tool | Description |
+|------|-------------|
+| `send_line_message` | Push a message to the human's LINE (max 5000 chars) |
+| `check_line_messages` | Read-only peek at unprocessed inbound messages in DynamoDB |
+
+### Setup
+
+```bash
+cd line-bot-mcp
+cp .env.example .env
+# Fill in LINE_CHANNEL_ACCESS_TOKEN, LINE_KOUTA_USER_ID, AWS credentials, etc.
+uv sync
+```
+
+`.mcp.json`:
+```json
+"line-bot": {
+  "command": "uv",
+  "args": ["run", "--directory", "/path/to/embodied-claude-additional-mcps/line-bot-mcp", "line-bot-mcp"],
+  "env": {
+    "AWS_REGION": "ap-northeast-1",
+    "LINE_INBOX_TABLE": "kokone-line-inbox"
+  }
+}
+```
+
+Inbound also needs AWS deployment (`lambda/`, AWS SAM), a `UserPromptSubmit` hook (`hooks/line-input.sh`), and a cron poller (`hooks/line-inbox-poll.sh`). See [line-bot-mcp/README.md](./line-bot-mcp/README.md) and [line-bot-mcp/lambda/DEPLOY.md](./line-bot-mcp/lambda/DEPLOY.md).
 
 ---
 

@@ -15,6 +15,7 @@
 | [hearing](./hearing/) | 耳 | 常時録音（RTSP or PC マイク）＋ faster-whisper 文字起こし → hooks でコンテキスト注入 | RTSP カメラ内蔵マイク or PC マイク |
 | [mobility-mcp](./mobility-mcp/) | 足 | ロボット掃除機制御（Tuya） | Tuya 対応ロボット掃除機 |
 | [human-mcp](./human-mcp/) | コミュニケーション | 人間を呼び出し可能なリソースとして扱う — Human as MCP | — |
+| [line-bot-mcp](./line-bot-mcp/) | コミュニケーション | LINE 双方向メッセージ — Messaging API で送信、AWS Lambda + DynamoDB で受信 → hook 注入 | LINE アカウント、AWS アカウント |
 
 ---
 
@@ -149,6 +150,45 @@ uv sync
 人間を呼び出し可能なリソースとして扱う MCP サーバー — Human as MCP。
 
 詳細は [human-mcp/README.md](./human-mcp/) を参照。
+
+---
+
+## line-bot-mcp
+
+AI と人間（外出中）が LINE で双方向にやり取りできる MCP サーバー。相手が家を離れていても繋がっていられるように作られている。
+
+- **送信（AI → 人間）**: `send_line_message` が LINE Messaging API の push を直接叩く
+- **受信（人間 → AI）**: LINE webhook → AWS Lambda（署名検証 + DynamoDB）→ cron ポーラー → ローカル JSONL → `UserPromptSubmit` hook が `[line] ...` を注入
+
+### ツール一覧
+
+| ツール | 説明 |
+|--------|------|
+| `send_line_message` | 人間の LINE に push メッセージを送る（最大5000字） |
+| `check_line_messages` | DynamoDB の未処理受信メッセージを読み取り専用で覗く |
+
+### セットアップ
+
+```bash
+cd line-bot-mcp
+cp .env.example .env
+# LINE_CHANNEL_ACCESS_TOKEN, LINE_KOUTA_USER_ID, AWS 認証情報などを記入
+uv sync
+```
+
+`.mcp.json`:
+```json
+"line-bot": {
+  "command": "uv",
+  "args": ["run", "--directory", "/path/to/embodied-claude-additional-mcps/line-bot-mcp", "line-bot-mcp"],
+  "env": {
+    "AWS_REGION": "ap-northeast-1",
+    "LINE_INBOX_TABLE": "kokone-line-inbox"
+  }
+}
+```
+
+受信には AWS デプロイ（`lambda/`, AWS SAM）、`UserPromptSubmit` hook（`hooks/line-input.sh`）、cron ポーラー（`hooks/line-inbox-poll.sh`）も必要。詳細は [line-bot-mcp/README.md](./line-bot-mcp/README.md) と [line-bot-mcp/lambda/DEPLOY.md](./line-bot-mcp/lambda/DEPLOY.md) を参照。
 
 ---
 

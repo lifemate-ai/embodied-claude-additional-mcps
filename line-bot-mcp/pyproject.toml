@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "line-bot-mcp"
+version = "0.1.0"
+description = "MCP server for two-way LINE messaging between Kokone and Kouta (send via Messaging API, receive via AWS Lambda + DynamoDB)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp[cli]>=1.26.0",
+    "python-dotenv>=1.2.1",
+    "httpx>=0.27.0",
+    "boto3>=1.34.0",
+]
+
+[project.scripts]
+line-bot-mcp = "line_bot_mcp.server:main"
+line-inbox-poll = "line_bot_mcp.poller:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.6.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/line_bot_mcp"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
