@@ -168,7 +168,7 @@ Bidirectional LINE messaging between the AI and a human, so they can stay in tou
 ```bash
 cd line-bot-mcp
 cp .env.example .env
-# Fill in LINE_CHANNEL_ACCESS_TOKEN, LINE_KOUTA_USER_ID, AWS credentials, etc.
+# Fill in LINE_CHANNEL_ACCESS_TOKEN, LINE_OWNER_USER_ID, AWS credentials, etc.
 uv sync
 ```
 
@@ -179,7 +179,7 @@ uv sync
   "args": ["run", "--directory", "/path/to/embodied-claude-additional-mcps/line-bot-mcp", "line-bot-mcp"],
   "env": {
     "AWS_REGION": "ap-northeast-1",
-    "LINE_INBOX_TABLE": "kokone-line-inbox"
+    "LINE_INBOX_TABLE": "line-inbox"
   }
 }
 ```

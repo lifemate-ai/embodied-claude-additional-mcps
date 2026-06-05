@@ -172,7 +172,7 @@ AI と人間（外出中）が LINE で双方向にやり取りできる MCP サ
 ```bash
 cd line-bot-mcp
 cp .env.example .env
-# LINE_CHANNEL_ACCESS_TOKEN, LINE_KOUTA_USER_ID, AWS 認証情報などを記入
+# LINE_CHANNEL_ACCESS_TOKEN, LINE_OWNER_USER_ID, AWS 認証情報などを記入
 uv sync
 ```
 
@@ -183,7 +183,7 @@ uv sync
   "args": ["run", "--directory", "/path/to/embodied-claude-additional-mcps/line-bot-mcp", "line-bot-mcp"],
   "env": {
     "AWS_REGION": "ap-northeast-1",
-    "LINE_INBOX_TABLE": "kokone-line-inbox"
+    "LINE_INBOX_TABLE": "line-inbox"
   }
 }
 ```

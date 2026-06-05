@@ -1,4 +1,4 @@
-"""LINE Messaging API push client (outbound: Kokone -> Kouta).
+"""LINE Messaging API push client (outbound: AI -> owner).
 
 Thin synchronous wrapper around the push endpoint with a short retry on
 transient (429/5xx) failures. 4xx errors are raised immediately.

@@ -1,7 +1,7 @@
 """LINE BOT MCP server.
 
 Exposes two tools:
-- ``send_line_message``: push a message to Kouta's LINE (outbound).
+- ``send_line_message``: push a message to the owner's LINE (outbound).
 - ``check_line_messages``: read-only peek at unprocessed inbound messages
   (the main inbound path is the hook injection, not this tool).
 """
@@ -20,7 +20,7 @@ MAX_LEN = 5000
 
 @mcp.tool()
 def send_line_message(text: str) -> str:
-    """コウタの LINE に push メッセージを送る（ここね能動発信）。
+    """オーナーの LINE に push メッセージを送る（AI能動発信）。
 
     Args:
         text: 本文（最大5000字、改行可）。
@@ -32,9 +32,9 @@ def send_line_message(text: str) -> str:
         return f"Error: text too long ({len(text)} > {MAX_LEN})"
     cfg = Config.from_env()
     if not cfg.can_send:
-        return "Error: LINE_CHANNEL_ACCESS_TOKEN or LINE_KOUTA_USER_ID not set"
+        return "Error: LINE_CHANNEL_ACCESS_TOKEN or LINE_OWNER_USER_ID not set"
     try:
-        line_client.push(cfg.channel_access_token, cfg.kouta_user_id, text)
+        line_client.push(cfg.channel_access_token, cfg.owner_user_id, text)
     except Exception as e:  # noqa: BLE001 - surface any failure as a tool error string
         return f"Error: {e}"
     return f"sent (len={len(text)})"

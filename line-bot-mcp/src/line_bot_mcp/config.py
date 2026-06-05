@@ -1,7 +1,7 @@
 """Configuration for the LINE BOT MCP server and inbox poller.
 
 Secrets live in ``line-bot-mcp/.env`` (gitignored). The send side needs the
-LINE channel access token + Kouta's userId; the poll side needs AWS creds
+LINE channel access token + the owner's userId; the poll side needs AWS creds
 (read by boto3 from the environment) plus the DynamoDB table name.
 """
 
@@ -24,7 +24,7 @@ class Config:
 
     # Outbound (LINE Messaging API push)
     channel_access_token: str
-    kouta_user_id: str
+    owner_user_id: str
     # Inbound (DynamoDB inbox poller)
     aws_region: str
     inbox_table: str
@@ -37,9 +37,9 @@ class Config:
         home = Path(os.path.expanduser("~"))
         return cls(
             channel_access_token=os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", ""),
-            kouta_user_id=os.environ.get("LINE_KOUTA_USER_ID", ""),
+            owner_user_id=os.environ.get("LINE_OWNER_USER_ID", ""),
             aws_region=os.environ.get("AWS_REGION", "ap-northeast-1"),
-            inbox_table=os.environ.get("LINE_INBOX_TABLE", "kokone-line-inbox"),
+            inbox_table=os.environ.get("LINE_INBOX_TABLE", "line-inbox"),
             inbox_index=os.environ.get("LINE_INBOX_INDEX", "unprocessed-index"),
             inbox_jsonl=os.environ.get(
                 "LINE_INBOX_JSONL", str(home / ".claude" / "line_inbox.jsonl")
@@ -48,8 +48,8 @@ class Config:
 
     @property
     def can_send(self) -> bool:
-        """True when both the access token and Kouta's userId are configured."""
-        return bool(self.channel_access_token and self.kouta_user_id)
+        """True when both the access token and the owner's userId are configured."""
+        return bool(self.channel_access_token and self.owner_user_id)
 
     @property
     def can_poll(self) -> bool:

@@ -15,14 +15,14 @@ def test_send_too_long_rejected():
 
 def test_send_without_token_reports_error(monkeypatch):
     monkeypatch.delenv("LINE_CHANNEL_ACCESS_TOKEN", raising=False)
-    monkeypatch.delenv("LINE_KOUTA_USER_ID", raising=False)
+    monkeypatch.delenv("LINE_OWNER_USER_ID", raising=False)
     result = server.send_line_message("やあ")
     assert "not set" in result
 
 
 def test_send_success_calls_push(monkeypatch):
     monkeypatch.setenv("LINE_CHANNEL_ACCESS_TOKEN", "tok")
-    monkeypatch.setenv("LINE_KOUTA_USER_ID", "U1")
+    monkeypatch.setenv("LINE_OWNER_USER_ID", "U1")
     captured = {}
 
     def fake_push(token, to, text):
@@ -36,7 +36,7 @@ def test_send_success_calls_push(monkeypatch):
 
 def test_send_surfaces_push_failure(monkeypatch):
     monkeypatch.setenv("LINE_CHANNEL_ACCESS_TOKEN", "tok")
-    monkeypatch.setenv("LINE_KOUTA_USER_ID", "U1")
+    monkeypatch.setenv("LINE_OWNER_USER_ID", "U1")
 
     def boom(token, to, text):
         raise RuntimeError("429 too many")

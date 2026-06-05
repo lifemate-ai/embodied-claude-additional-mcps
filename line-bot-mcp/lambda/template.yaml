@@ -1,16 +1,16 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: kokone LINE webhook receiver — API Gateway (HTTP API) + Lambda + DynamoDB
+Description: LINE webhook receiver — API Gateway (HTTP API) + Lambda + DynamoDB
 
 Parameters:
   LineChannelSecret:
     Type: String
     NoEcho: true
     Description: LINE channel secret (for X-Line-Signature verification)
-  LineKoutaUserId:
+  LineOwnerUserId:
     Type: String
     Default: ""
-    Description: Kouta's LINE userId (from webhook source.userId; set after first message)
+    Description: the owner's LINE userId (from webhook source.userId; set after first message)
   InboxTtlDays:
     Type: Number
     Default: 14
@@ -26,7 +26,7 @@ Resources:
   InboxTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: kokone-line-inbox
+      TableName: line-inbox
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: message_id
@@ -54,13 +54,13 @@ Resources:
   WebhookFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: kokone-line-webhook
+      FunctionName: line-webhook
       CodeUri: .
       Handler: handler.handler
       Environment:
         Variables:
           LINE_CHANNEL_SECRET: !Ref LineChannelSecret
-          LINE_KOUTA_USER_ID: !Ref LineKoutaUserId
+          LINE_OWNER_USER_ID: !Ref LineOwnerUserId
           INBOX_TABLE: !Ref InboxTable
           INBOX_TTL_DAYS: !Ref InboxTtlDays
       Policies:
@@ -80,5 +80,5 @@ Outputs:
     Description: LINE webhook URL — register this in LINE Developers Console
     Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/webhook"
   InboxTableName:
-    Description: DynamoDB inbox table name (set as LINE_INBOX_TABLE on the Mac Mini)
+    Description: DynamoDB inbox table name (set as LINE_INBOX_TABLE on the the host machine)
     Value: !Ref InboxTable

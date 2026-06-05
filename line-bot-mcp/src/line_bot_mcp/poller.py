@@ -1,4 +1,4 @@
-"""DynamoDB inbox poller (inbound: Kouta -> Kokone).
+"""DynamoDB inbox poller (inbound: owner -> AI).
 
 Run as the ``line-inbox-poll`` script from cron every ~2 minutes. Queries the
 ``unprocessed-index`` GSI for messages the Lambda stored, appends them to a
@@ -44,7 +44,7 @@ def _item_to_dict(item: dict[str, Any]) -> dict[str, Any]:
     """Normalise a DynamoDB item (Decimal etc.) into a plain JSON-safe dict."""
     return {
         "message_id": str(item.get("message_id", "")),
-        "person": str(item.get("person", "kouta")),
+        "person": str(item.get("person", "owner")),
         "text": str(item.get("text", "")),
         "line_ts": int(item.get("line_ts", 0) or 0),
         "received_at": int(item.get("received_at", 0) or 0),

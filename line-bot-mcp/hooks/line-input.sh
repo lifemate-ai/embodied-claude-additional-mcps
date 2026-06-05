@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # UserPromptSubmit hook: drain ~/.claude/line_inbox.jsonl and inject
-# `[line] kouta: ...` lines into the prompt. AWS-independent (reads only the
+# `[line] owner: ...` lines into the prompt. AWS-independent (reads only the
 # local file the poller writes) so it stays well within the 3s hook timeout
 # and runs on the system python3 (3.9.6, stdlib only).
 #
@@ -37,7 +37,7 @@ for ln in open(src, encoding="utf-8"):
     if mid:
         seen.add(mid)
         new_ids.append(mid)
-    out.append("[line] %s: %s" % (m.get("person", "kouta"), m.get("text", "")))
+    out.append("[line] %s: %s" % (m.get("person", "owner"), m.get("text", "")))
 
 if new_ids:
     with open(seen_path, "a", encoding="utf-8") as sf:

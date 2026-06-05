@@ -12,10 +12,10 @@ _LAMBDA_DIR = str(Path(__file__).parent.parent / "lambda")
 _SECRET = "testsecret"
 
 
-def _load_handler(monkeypatch, kouta_id="Ukouta"):
+def _load_handler(monkeypatch, owner_id="Uowner"):
     monkeypatch.setenv("LINE_CHANNEL_SECRET", _SECRET)
     monkeypatch.setenv("INBOX_TABLE", "dummy")
-    monkeypatch.setenv("LINE_KOUTA_USER_ID", kouta_id)
+    monkeypatch.setenv("LINE_OWNER_USER_ID", owner_id)
     if _LAMBDA_DIR not in sys.path:
         sys.path.insert(0, _LAMBDA_DIR)
     import handler as h
@@ -73,7 +73,7 @@ def test_text_message_stored_with_person(monkeypatch):
                 {
                     "type": "message",
                     "message": {"type": "text", "id": "m1", "text": "おはよう"},
-                    "source": {"userId": "Ukouta"},
+                    "source": {"userId": "Uowner"},
                     "timestamp": 123,
                 }
             ]
@@ -84,7 +84,7 @@ def test_text_message_stored_with_person(monkeypatch):
     assert len(puts) == 1
     item = puts[0]["Item"]
     assert item["message_id"] == "m1"
-    assert item["person"] == "kouta"
+    assert item["person"] == "owner"
     assert item["text"] == "おはよう"
     assert item["processed"] == 0
 
@@ -99,7 +99,7 @@ def test_non_text_message_skipped(monkeypatch):
                 {
                     "type": "message",
                     "message": {"type": "sticker", "id": "s1"},
-                    "source": {"userId": "Ukouta"},
+                    "source": {"userId": "Uowner"},
                 }
             ]
         }

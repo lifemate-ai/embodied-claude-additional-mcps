@@ -20,7 +20,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 _CHANNEL_SECRET = os.environ.get("LINE_CHANNEL_SECRET", "")
-_KOUTA_USER_ID = os.environ.get("LINE_KOUTA_USER_ID", "")
+_OWNER_USER_ID = os.environ.get("LINE_OWNER_USER_ID", "")
 _TABLE_NAME = os.environ.get("INBOX_TABLE", "")
 _TTL_DAYS = int(os.environ.get("INBOX_TTL_DAYS", "14"))
 
@@ -57,7 +57,7 @@ def _store_event(ev: dict, now: int) -> None:
     if not message_id:
         return
     user_id = (ev.get("source") or {}).get("userId", "")
-    person = "kouta" if user_id and user_id == _KOUTA_USER_ID else "unknown"
+    person = "owner" if user_id and user_id == _OWNER_USER_ID else "unknown"
     try:
         _table().put_item(
             Item={

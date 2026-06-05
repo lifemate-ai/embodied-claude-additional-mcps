@@ -2,11 +2,11 @@
 version = 0.1
 
 [default.deploy.parameters]
-stack_name = "kokone-line-bot"
+stack_name = "line-bot"
 region = "ap-northeast-1"
 capabilities = "CAPABILITY_IAM"
 resolve_s3 = true
 confirm_changeset = true
 # LineChannelSecret is secret — pass it at deploy time instead of committing it here:
-#   sam deploy --parameter-overrides "LineChannelSecret=xxxx LineKoutaUserId=Uyyyy"
-parameter_overrides = "LineKoutaUserId=\"\""
+#   sam deploy --parameter-overrides "LineChannelSecret=xxxx LineOwnerUserId=Uyyyy"
+parameter_overrides = "LineOwnerUserId=\"\""
