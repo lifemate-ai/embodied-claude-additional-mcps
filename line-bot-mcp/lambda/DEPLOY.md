@@ -40,9 +40,9 @@ sam deploy --guided \
    - Lambda 環境変数: `sam deploy --parameter-overrides "LineChannelSecret=... LineOwnerUserId=Uxxxx"` で再デプロイ
    - the host machine の `line-bot-mcp/.env` の `LINE_OWNER_USER_ID`
 
-## 5. ポーラー用 IAM ユーザー（最小権限）
+## 5. ポーラー兼メディア送信用 IAM ユーザー（最小権限）
 1. IAM ユーザー `line-poller` を作成（プログラムアクセス）
-2. 以下のインラインポリシーを付与（`<ACCT>` は自分のアカウントID）:
+2. 以下のインラインポリシーを付与（`<ACCT>` はアカウントID、`<MEDIA_BUCKET>` は手順3の出力 `MediaBucketName`）:
 ```json
 {
   "Version": "2012-10-17",
@@ -56,10 +56,16 @@ sam deploy --guided \
       "Effect": "Allow",
       "Action": ["dynamodb:UpdateItem", "dynamodb:GetItem"],
       "Resource": "arn:aws:dynamodb:ap-northeast-1:<ACCT>:table/line-inbox"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject"],
+      "Resource": "arn:aws:s3:::<MEDIA_BUCKET>/media/*"
     }
   ]
 }
 ```
+※ `s3:GetObject` は **presigned GET URL の生成に必須**（無いと LINE が取得時に 403）。画像/音声送信を使わないなら S3 の 2 行は省略可。
 3. アクセスキーを発行し、the host machine の `line-bot-mcp/.env` の
    `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` に記入
 
@@ -70,3 +76,5 @@ sam deploy --guided \
 ## メモ
 - 現状 secret は Lambda 環境変数。将来は SSM Parameter Store / Secrets Manager 推奨。
 - メッセージは DynamoDB TTL（既定14日）で自動失効。
+- **メディア配信**: 画像/音声は the host machine が S3 にアップロードし presigned GET URL（既定15分）で配信。バケットは PublicAccessBlock 全 ON のままで presigned URL は機能する（公開設定は不要）。S3 のメディアはライフサイクルで 1 日後に自動削除。
+- **the host machine の前提**: メディア送信には **ffmpeg/ffprobe が必須**（画像プレビュー縮小・音声 m4a 変換）。音声受信の文字起こしは任意で、`uv sync --extra transcribe`（faster-whisper）導入時のみ有効（未導入なら音声はファイル保存のみ）。
