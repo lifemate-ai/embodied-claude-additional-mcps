@@ -30,6 +30,9 @@ class Config:
     inbox_table: str
     inbox_index: str
     inbox_jsonl: str
+    # Outbound media (S3 presigned URL delivery: image/audio AI -> owner)
+    media_s3_bucket: str
+    media_url_ttl: int
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -44,6 +47,8 @@ class Config:
             inbox_jsonl=os.environ.get(
                 "LINE_INBOX_JSONL", str(home / ".claude" / "line_inbox.jsonl")
             ),
+            media_s3_bucket=os.environ.get("LINE_MEDIA_S3_BUCKET", ""),
+            media_url_ttl=int(os.environ.get("LINE_MEDIA_URL_TTL", "900")),
         )
 
     @property
@@ -55,3 +60,8 @@ class Config:
     def can_poll(self) -> bool:
         """True when the DynamoDB table name is configured."""
         return bool(self.inbox_table)
+
+    @property
+    def can_send_media(self) -> bool:
+        """True when media send is possible (push creds + S3 bucket configured)."""
+        return self.can_send and bool(self.media_s3_bucket)

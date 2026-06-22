@@ -49,26 +49,35 @@ def _raw_body(event: dict) -> bytes:
     return body.encode("utf-8")
 
 
+_ALLOWED_TYPES = {"text", "image", "audio"}
+
+
 def _store_event(ev: dict, now: int) -> None:
     msg = ev.get("message", {})
-    if msg.get("type") != "text":
-        return
+    msg_type = msg.get("type")
+    if msg_type not in _ALLOWED_TYPES:
+        return  # sticker / video / location / file etc. are ignored
     message_id = msg.get("id")
     if not message_id:
         return
     user_id = (ev.get("source") or {}).get("userId", "")
     person = "owner" if user_id and user_id == _OWNER_USER_ID else "unknown"
+    item = {
+        "message_id": message_id,
+        "person": person,
+        "type": msg_type,
+        # text body for text messages; image/audio bodies are fetched on demand
+        "text": msg.get("text", "") if msg_type == "text" else "",
+        "line_ts": int(ev.get("timestamp", now * 1000)),
+        "received_at": now,
+        "processed": 0,
+        "ttl": now + _TTL_DAYS * 86400,
+    }
+    if msg_type == "audio":
+        item["duration"] = int(msg.get("duration", 0) or 0)
     try:
         _table().put_item(
-            Item={
-                "message_id": message_id,
-                "person": person,
-                "text": msg.get("text", ""),
-                "line_ts": int(ev.get("timestamp", now * 1000)),
-                "received_at": now,
-                "processed": 0,
-                "ttl": now + _TTL_DAYS * 86400,
-            },
+            Item=item,
             ConditionExpression="attribute_not_exists(message_id)",
         )
     except ClientError as e:

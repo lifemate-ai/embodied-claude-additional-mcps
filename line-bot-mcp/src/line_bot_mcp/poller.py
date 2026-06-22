@@ -11,12 +11,16 @@ from __future__ import annotations
 
 import fcntl
 import json
+import time
 from pathlib import Path
 from typing import Any
 
+from . import line_client
 from .config import Config
 
 _MAX_BATCH = 50
+_FETCH_GIVEUP_SEC = 3600  # retry transient media-fetch failures up to 1h, then give up
+_WHISPER_MODEL = None
 
 
 def _table(cfg: Config):
@@ -41,14 +45,75 @@ def _query_unprocessed(cfg: Config, limit: int) -> list[dict[str, Any]]:
 
 
 def _item_to_dict(item: dict[str, Any]) -> dict[str, Any]:
-    """Normalise a DynamoDB item (Decimal etc.) into a plain JSON-safe dict."""
+    """Normalise a DynamoDB item (Decimal etc.) into a plain JSON-safe dict.
+
+    Legacy rows have no ``type`` — they default to "text" for backward compat.
+    """
     return {
         "message_id": str(item.get("message_id", "")),
         "person": str(item.get("person", "owner")),
+        "type": str(item.get("type", "text")),
         "text": str(item.get("text", "")),
+        "duration": int(item.get("duration", 0) or 0),
         "line_ts": int(item.get("line_ts", 0) or 0),
         "received_at": int(item.get("received_at", 0) or 0),
     }
+
+
+def _media_dir(cfg: Config) -> Path:
+    """Directory where received media bodies are cached (sibling of the inbox)."""
+    return Path(cfg.inbox_jsonl).parent / "line_media"
+
+
+def _transcribe(audio_path: Path) -> str | None:
+    """Transcribe an m4a with faster-whisper if installed; None if unavailable.
+
+    The model is loaded lazily and cached for the process lifetime, so it is
+    only loaded when an audio message actually arrives.
+    """
+    global _WHISPER_MODEL
+    try:
+        from faster_whisper import WhisperModel
+    except ImportError:
+        return None
+    if _WHISPER_MODEL is None:
+        _WHISPER_MODEL = WhisperModel("small", device="cpu", compute_type="int8")
+    segments, _info = _WHISPER_MODEL.transcribe(
+        str(audio_path),
+        language="ja",
+        condition_on_previous_text=False,
+        no_speech_threshold=0.6,
+    )
+    return " ".join(seg.text for seg in segments).strip()
+
+
+def fetch_and_cache(cfg: Config, d: dict[str, Any]) -> dict[str, Any]:
+    """Download + cache an owner image/audio body (audio is also transcribed).
+
+    Returns a new dict: image adds ``media_path``; audio adds ``media_path`` and
+    sets ``text`` to the transcript. Non-media or non-owner items pass through
+    unchanged (owner-only keeps unknown senders from costing fetch/transcribe).
+    A fetch failure (e.g. LINE content expired) is recorded in ``text`` without
+    a ``media_path``.
+    """
+    msg_type = d.get("type", "text")
+    if msg_type not in ("image", "audio") or d.get("person") != "owner":
+        return d
+    message_id = d["message_id"]
+    try:
+        data, _ctype = line_client.fetch_content(cfg.channel_access_token, message_id)
+    except Exception as e:  # noqa: BLE001 - transient/expired; flag so drain can retry
+        return {**d, "_fetch_failed": True, "text": f"（{msg_type}の取得に失敗しました: {e}）"}
+    media_dir = _media_dir(cfg)
+    media_dir.mkdir(parents=True, exist_ok=True)
+    ext = "jpg" if msg_type == "image" else "m4a"
+    path = media_dir / f"{message_id}.{ext}"
+    path.write_bytes(data)
+    out = {**d, "media_path": str(path)}
+    if msg_type == "audio":
+        transcript = _transcribe(path)
+        out["text"] = transcript or "（音声: 文字起こし不可。faster-whisper 未導入の可能性）"
+    return out
 
 
 def peek_unprocessed(cfg: Config, limit: int = 10) -> list[dict[str, Any]]:
@@ -77,19 +142,35 @@ def drain(cfg: Config) -> int:
     if not items:
         return 0
 
-    dicts = [_item_to_dict(it) for it in items]
-    path = Path(cfg.inbox_jsonl)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
-        try:
-            for d in dicts:
-                f.write(json.dumps(d, ensure_ascii=False) + "\n")
-        finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
+    now = int(time.time())
+    dicts = [fetch_and_cache(cfg, _item_to_dict(it)) for it in items]
+    to_write, to_mark = [], []
+    for d in dicts:
+        failed = d.pop("_fetch_failed", False)
+        if failed and (now - int(d.get("received_at", 0) or 0)) < _FETCH_GIVEUP_SEC:
+            continue  # transient failure: leave unprocessed so the next poll retries
+        to_write.append(d)
+        if d["message_id"]:
+            to_mark.append(d["message_id"])
 
-    _mark_processed(cfg, [d["message_id"] for d in dicts if d["message_id"]])
-    return len(dicts)
+    if to_write:
+        path = Path(cfg.inbox_jsonl)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # Hold a sidecar lock across the append so the hook's rename-based drain
+        # (which ignores flock on the inbox inode) cannot interleave mid-write.
+        lock_path = str(path) + ".lock"
+        with open(lock_path, "w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            try:
+                with path.open("a", encoding="utf-8") as f:
+                    for d in to_write:
+                        f.write(json.dumps(d, ensure_ascii=False) + "\n")
+            finally:
+                fcntl.flock(lock, fcntl.LOCK_UN)
+
+    if to_mark:
+        _mark_processed(cfg, to_mark)
+    return len(to_write)
 
 
 def main() -> None:

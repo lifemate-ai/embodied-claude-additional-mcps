@@ -75,6 +75,26 @@ Resources:
             Path: /webhook
             Method: POST
 
+  # Outbound media (image/audio AI -> owner). The host uploads here and serves
+  # via short-lived presigned GET URLs — the Lambda never touches this bucket.
+  MediaBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-media
+            Status: Enabled
+            Prefix: media/
+            ExpirationInDays: 1
+
 Outputs:
   WebhookUrl:
     Description: LINE webhook URL — register this in LINE Developers Console
@@ -82,3 +102,6 @@ Outputs:
   InboxTableName:
     Description: DynamoDB inbox table name (set as LINE_INBOX_TABLE on the the host machine)
     Value: !Ref InboxTable
+  MediaBucketName:
+    Description: S3 bucket for outbound media (set as LINE_MEDIA_S3_BUCKET on the host machine)
+    Value: !Ref MediaBucket
